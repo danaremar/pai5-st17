@@ -25,6 +25,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.net.SocketFactory;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -102,8 +106,12 @@ public class MainActivity extends AppCompatActivity {
                                         ////////////////////////////////////////////////////////////////////////
                                         // 3. Enviar los datos
                                         ////////////////////////////////////////////////////////////////////////
-                                        SocketFactory socketFactory = (SocketFactory) SocketFactory.getDefault();
-                                        //Socket socket = (Socket) socketFactory.createSocket(serverIp,serverPort);
+
+                                        // SocketFactory socketFactory = (SocketFactory) SocketFactory.getDefault();
+                                        // Socket socket = (Socket) socketFactory.createSocket(serverIp,serverPort);
+
+                                        SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+                                        SSLSocket socket = (SSLSocket) socketFactory.createSocket(serverIp, serverPort);
 
                                         String key = "108079546209274483481442683641105470668825844172663843934775892731209928221929";
 
@@ -143,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
         byte[] encodedHash = digest.digest(
                 body.getBytes(StandardCharsets.UTF_8));
 
-        return new String(encodedHash);
+        return bytesToHex(encodedHash);
     }
 
     // from: https://www.baeldung.com/sha-256-hashing-java
