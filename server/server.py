@@ -45,6 +45,7 @@ class Server:
         while True:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
                 sock.bind((self.host, self.port))
+                print('Port:' + str(self.port))
                 sock.listen(10)
                 with self.context.wrap_socket(sock, server_side=True) as ssock:
                     conn, addr = ssock.accept()
