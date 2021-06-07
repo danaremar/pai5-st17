@@ -22,6 +22,7 @@ FRECUENCY = conf.HOUR_FRECUENCY
 ENCODING = 'utf-8'
 CERT = conf.CERT
 KEY = conf.KEY
+NONCE_DB = 'nonce.db'
 
 
 class Server:
@@ -34,11 +35,12 @@ class Server:
         self.port = port
         self.cert_file = os.path.abspath(cert_file)
         self.key_file = os.path.abspath(key_file)
-        self.db = sqlite3.connect('nonce.db')
+        self.db = sqlite3.connect(NONCE_DB)
 
-        self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        self.context.load_cert_chain(cert_file, key_file)
-        self.context.set_ciphers("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305-SHA256:ECDHE-RSA-CHACHA20-POLY1305-SHA256:ECDHE-ECDSA-AES-256-GCM-SHA384:ECDHE-RSA-AES-256-GCM-SHA384")
+        # UNCOMMENT FOR TLS
+        # self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        # self.context.load_cert_chain(cert_file, key_file)
+        # self.context.set_ciphers("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305-SHA256:ECDHE-RSA-CHACHA20-POLY1305-SHA256:ECDHE-ECDSA-AES-256-GCM-SHA384:ECDHE-RSA-AES-256-GCM-SHA384")
         initialize_db(self.db)
 
     def run(self):
@@ -47,8 +49,15 @@ class Server:
                 sock.bind((self.host, self.port))
                 print('Port:' + str(self.port))
                 sock.listen(10)
-                with self.context.wrap_socket(sock, server_side=True) as ssock:
-                    conn, addr = ssock.accept()
+
+                # UNCOMMENT FOR TLS
+                # with self.context.wrap_socket(sock, server_side=True) as ssock:
+
+                while True:
+                    
+                    # UNCOMMENT FOR TLS
+                    # conn, addr = ssock.accept()
+                    conn, addr = sock.accept()
                     with conn:
                         if DEBUG_MODE:
                             print('Connected by', addr)
@@ -72,7 +81,7 @@ class Server:
                             since = datetime.datetime(now.year, now.month, now.day).timestamp()
                             hour = datetime.timedelta(hours=1)
                             moment = since - 4*hour
-                            thread_db = sqlite3.connect('nonce.db')
+                            thread_db = sqlite3.connect(NONCE_DB)
                             requests = select_all_responses(thread_db, moment)
                             
 
@@ -103,7 +112,7 @@ class Server:
 
     @staticmethod
     def reports():
-        thread_db = sqlite3.connect('nonce.db')
+        thread_db = sqlite3.connect(NONCE_DB)
         now = datetime.datetime.now()
         file_name = now.strftime("%d_%m_%Y")
         f = open(REPORT_DIRECTORY + '/report_' + file_name + '.txt','w')
