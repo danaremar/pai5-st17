@@ -4,10 +4,12 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.res.Resources;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,6 +18,11 @@ import com.google.android.material.textfield.TextInputEditText;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -34,11 +41,12 @@ import javax.net.ssl.SSLSocketFactory;
 public class MainActivity extends AppCompatActivity {
 
     // Setup Server information
-    protected static String serverIp = "192.168.1.82";
+    protected static String serverIp = "10.0.2.2";
     protected static int serverPort = 465;
 
     private String okMessage = "Petición enviada correctamente";
     private String errorMessage = "Ha ocurrido un problema";
+    private String key = "108079546209274483481442683641105470668825844172663843934775892731209928221929";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,18 +67,30 @@ public class MainActivity extends AppCompatActivity {
 
     // Creación de un cuadro de dialogo para confirmar pedido
     private void showDialog() throws Resources.NotFoundException {
-        final CheckBox sabanas = (CheckBox) findViewById(R.id.checkBox_sabanas);
-        final CheckBox camas = (CheckBox) findViewById(R.id.checkBox_camas);
-        final CheckBox mesas = (CheckBox) findViewById(R.id.checkBox_mesas);
-        final CheckBox sillas = (CheckBox) findViewById(R.id.checkBox_sillas);
-        final TextInputEditText textInputClientNumber = (TextInputEditText) findViewById(R.id.textInputEditText);
 
-        final String clientNumber = textInputClientNumber.getText().toString();
+        final EditText camas = (EditText) findViewById(R.id.textNumberCamas);
+        final EditText mesas = (EditText) findViewById(R.id.textNumberMesas);
+        final EditText sillas = (EditText) findViewById(R.id.textNumberSillas);
+        final EditText sillones = (EditText) findViewById(R.id.textNumberSillones);
+        final EditText cliente = (EditText) findViewById(R.id.textNumerCliente);
 
-        if (!sabanas.isChecked() && !camas.isChecked() && !mesas.isChecked() && !sillas.isChecked()) {
-            Toast.makeText(getApplicationContext(), "Selecciona al menos un elemento", Toast.LENGTH_SHORT).show();
-        } else if(clientNumber.isEmpty()){
+        final String textCamas = camas.getText().toString();
+        final String textMesas = mesas.getText().toString();
+        final String textSillas = sillas.getText().toString();
+        final String textSillones = sillones.getText().toString();
+
+        final Integer numberCamas = Integer.parseInt(textCamas.isEmpty()?"0":textCamas);
+        final Integer numberMesas = Integer.parseInt(textMesas.isEmpty()?"0":textMesas);
+        final Integer numberSillas = Integer.parseInt(textSillas.isEmpty()?"0":textSillas);
+        final Integer numberSillones = Integer.parseInt(textSillones.isEmpty()?"0":textSillones);
+        final String numberCliente = cliente.getText().toString();
+
+        if(numberCliente.isEmpty()) {
             Toast.makeText(getApplicationContext(), "Indique el número de cliente", Toast.LENGTH_SHORT).show();
+        } else if( !(validate(numberCamas) && validate(numberMesas) && validate(numberSillas) && validate(numberSillones)) ) {
+            Toast.makeText(getApplicationContext(), "Seleccione cantidad entre 0 y 300", Toast.LENGTH_LONG).show();
+        }else if( (numberCamas+numberMesas+numberSillas+numberSillones)<1 ){
+            Toast.makeText(getApplicationContext(), "Solicite al menos un elemento", Toast.LENGTH_LONG).show();
         } else {
             new AlertDialog.Builder(this)
                     .setTitle("Enviar")
@@ -85,17 +105,14 @@ public class MainActivity extends AppCompatActivity {
                                         ////////////////////////////////////////////////////////////////////////
                                         // 1. Extraer los datos de la vista
                                         ////////////////////////////////////////////////////////////////////////
-                                        List<String> lstSelected = new ArrayList<>();
 
-                                        if( sabanas.isChecked()){ lstSelected.add("sabanas"); }
-                                        if( camas.isChecked()){ lstSelected.add("camas"); }
-                                        if( mesas.isChecked()){ lstSelected.add("mesas"); }
-                                        if( sillas.isChecked()){ lstSelected.add("sillas"); }
-
-                                        JSONObject messageJson = new JSONObject();
-                                        messageJson.put("clientNumber", clientNumber);
-                                        messageJson.put("selected", lstSelected);
-                                        String message = messageJson.toString();
+                                        final JSONObject messageJson = new JSONObject();
+                                        messageJson.put("camas", numberCamas);
+                                        messageJson.put("mesas", numberMesas);
+                                        messageJson.put("sillas", numberSillas);
+                                        messageJson.put("sillones", numberCliente);
+                                        messageJson.put("clientNumber", numberCliente);
+                                        final String message = messageJson.toString();
 
 
                                         ////////////////////////////////////////////////////////////////////////
@@ -107,33 +124,61 @@ public class MainActivity extends AppCompatActivity {
                                         // 3. Enviar los datos
                                         ////////////////////////////////////////////////////////////////////////
 
-                                        // SocketFactory socketFactory = (SocketFactory) SocketFactory.getDefault();
-                                        // Socket socket = (Socket) socketFactory.createSocket(serverIp,serverPort);
+                                        AsyncTask.execute(new Runnable() {
+                                            @Override
+                                            public void run() {
 
-                                        SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-                                        SSLSocket socket = (SSLSocket) socketFactory.createSocket(serverIp, serverPort);
+                                                try {
 
-                                        String key = "108079546209274483481442683641105470668825844172663843934775892731209928221929";
+                                                    // PAI 2 -> Without SSL
+                                                    // SocketFactory socketFactory = (SocketFactory) SocketFactory.getDefault();
+                                                    // Socket socket = (Socket) socketFactory.createSocket(serverIp,serverPort);
 
+                                                    // PAI 3 -> With SSL
+                                                    SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+                                                    SSLSocket socket = (SSLSocket) socketFactory.createSocket(serverIp, serverPort);
 
-                                        SecureRandom secureRandom = SecureRandom.getInstance("SHA1PRNG");
-                                        Integer intNonce = secureRandom.nextInt();
-                                        String nonce =  intNonce.toString();
-                                        String hmac = generateHmac(key,message,nonce);
+                                                    // SecureRandom secureRandom = SecureRandom.getInstance("SHA1PRNG");
+                                                    // Integer intNonce = secureRandom.nextInt();
+                                                    // String nonce =  intNonce.toString();
+                                                    String nonce = generateNonce(16);
 
-                                        JSONObject dataJson = new JSONObject();
-                                        dataJson.put("message", messageJson);
-                                        dataJson.put("nonce", nonce);
-                                        dataJson.put("hmac", hmac);
+                                                    String hmac = generateHmac(key,message,nonce);
 
-                                        String data = dataJson.toString();
+                                                    JSONObject dataJson = new JSONObject();
+                                                    dataJson.put("message", messageJson);
+                                                    dataJson.put("nonce", nonce);
+                                                    dataJson.put("hmac", hmac);
 
-                                        Toast.makeText(MainActivity.this, okMessage, Toast.LENGTH_SHORT).show();
+                                                    String data = dataJson.toString();
+
+                                                    PrintWriter output = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+                                                    output.println(data);
+                                                    output.flush();
+
+                                                    BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                                                    String response = input.readLine();
+                                                    if(response!=null && !response.isEmpty() && response.contains("OK")) {
+                                                        Toast.makeText(MainActivity.this, okMessage, Toast.LENGTH_SHORT).show();
+                                                    } else {
+                                                        showErrorView();
+                                                    }
+
+                                                    // close connection
+                                                    output.close();
+
+                                                // Error -> Show an Error Message
+                                                } catch (Exception e) {
+                                                    // e.printStackTrace();
+                                                    showErrorView();
+                                                }
+                                            }
+                                        });
 
                                     // Error -> Show an Error Message
                                     } catch (Exception e) {
                                         // e.printStackTrace();
-                                        Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+                                        showErrorView();
                                     }
                                 }
                             }
@@ -141,6 +186,14 @@ public class MainActivity extends AppCompatActivity {
                     .setNegativeButton(android.R.string.no, null)
                     .show();
         }
+    }
+
+    private Boolean validate(Integer number) {
+        return number!=null && number>=0 && number<=300;
+    }
+
+    private void showErrorView(){
+        Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
     }
 
     private String generateHmac(String key, String message, String nonce) throws NoSuchAlgorithmException {
@@ -152,6 +205,32 @@ public class MainActivity extends AppCompatActivity {
                 body.getBytes(StandardCharsets.UTF_8));
 
         return bytesToHex(encodedHash);
+    }
+
+    // from: https://www.geeksforgeeks.org/generate-random-string-of-given-size-in-java/
+    private String generateNonce(Integer size) {
+        // chose a Character random from this String
+        String AlphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                + "0123456789"
+                + "abcdefghijklmnopqrstuvxyz";
+
+        // create StringBuffer size of AlphaNumericString
+        StringBuilder sb = new StringBuilder(size);
+
+        for (int i = 0; i < size; i++) {
+
+            // generate a random number between
+            // 0 to AlphaNumericString variable length
+            int index
+                    = (int)(AlphaNumericString.length()
+                    * Math.random());
+
+            // add Character one by one in end of sb
+            sb.append(AlphaNumericString
+                    .charAt(index));
+        }
+
+        return sb.toString();
     }
 
     // from: https://www.baeldung.com/sha-256-hashing-java
