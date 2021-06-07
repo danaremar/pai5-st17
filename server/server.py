@@ -5,7 +5,7 @@ import hmac
 import sqlite3
 import conf
 from custom_logger import warning, info
-from database import initialize_db, duplicated_nonce, insert_new_nonce, insert_no_attack, insert_reply_attack, insert_integrity_attack, select_attacked, select_all_responses, ATTACK_INTEGRITY, ATTACK_REPLY
+from database import initialize_db, duplicated_nonce, insert_new_nonce, insert_no_attack, insert_reply_attack, insert_integrity_attack, insert_brute_force_attack, select_attacked, select_all_responses, ATTACK_INTEGRITY, ATTACK_REPLY, ATTACK_BRUTE_FORCE
 import datetime
 import ssl
 import os
@@ -65,9 +65,16 @@ class Server:
                             message = loaded_data["message"]
                             nonce = loaded_data["nonce"]
                             hmac = loaded_data["hmac"]
-
                             more_nonces = duplicated_nonce(self.db, nonce)
                             generated_hmac = generate_hmac(self.key, message, nonce)
+
+                            now = datetime.datetime.now()
+                            since = datetime.datetime(now.year, now.month, now.day).timestamp()
+                            hour = datetime.timedelta(hours=1)
+                            moment = since - 4*hour
+                            thread_db = sqlite3.connect('nonce.db')
+                            requests = select_all_responses(thread_db, moment)
+                            
 
                             if more_nonces:
                                 warning(f'VERIFICATION FAILURE: Reply attack detected')
@@ -77,11 +84,15 @@ class Server:
                                 warning(f'VERIFICATION FAILURE: Integrity have been compromised')
                                 insert_integrity_attack(self.db)
                                 response = {"RESPONSE": "Conection failed: Message integrity have been compromised"}
+                            elif requests > 3:
+                                warning(f'SERVER FAILURE: Server is being attacked. Please try later')
+                                insert_brute_force_attack(self.db)
+                                response = {"RESPONSE": "Conection failed: Server is being attacked"}
                             else:
                                 insert_new_nonce(self.db, nonce)
                                 insert_no_attack(self.db)
                                 warning(f'ACCEPTED: No problems detected')
-                                response = {"RESPONSE": "OK"}
+                                response = {"RESPONSE": " PETICION OK"}
 
                             if DEBUG_MODE:
                                 print(str(response))
@@ -101,7 +112,7 @@ class Server:
 
         since = datetime.datetime(now.year, now.month, now.day).timestamp()
 
-        month = timedelta(days=30)
+        month = datetime.timedelta(days=30)
         p1 = since - 3*month
         p2 = since - 2*month
         p3 = since - month
@@ -141,8 +152,8 @@ class Server:
         n_failed_integrity = select_attacked(thread_db, ATTACK_INTEGRITY, since)
         suffix_msg = " messages"
         n_correct = n_all - n_reply - n_failed_integrity
-        f.write("TOTAL: " + str(trend) + "\n")
-        f.write("   - TREND: " + str(n_correct) + suffix_msg + "\n")
+        f.write("TOTAL: " + str(n_all) + suffix_msg + "\n")
+        f.write("   - TREND: " + str(trend) + "\n")
         f.write("   - CORRECT: " + str(n_correct) + suffix_msg + "\n")
         f.write("   - REPLY ATTACK: " + str(n_reply) + suffix_msg + "\n")
         f.write("   - FAILED INTEGRITY: " + str(n_failed_integrity) + suffix_msg + "\n\n")
