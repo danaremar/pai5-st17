@@ -122,8 +122,10 @@ class Server:
         since = datetime.datetime(now.year, now.month, now.day).timestamp()
 
         month = datetime.timedelta(days=30)
-        p1 = since - 3*month
-        p2 = since - 2*month
+        two_months = datetime.timedelta(days=60)
+        three_months = datetime.timedelta(days=90)
+        p1 = since - three_months
+        p2 = since - two_months
         p3 = since - month
         n_all1 = select_all_responses(thread_db, p1)
         n_reply1 = select_attacked(thread_db, ATTACK_REPLY,p1)
