@@ -5,21 +5,16 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.res.Resources;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.material.textfield.TextInputEditText;
-
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -27,16 +22,8 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.net.SocketFactory;
-import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
-
 
 public class MainActivity extends AppCompatActivity {
 
@@ -131,16 +118,19 @@ public class MainActivity extends AppCompatActivity {
                                                 try {
 
                                                     // PAI 2 -> Without SSL
-                                                    // SocketFactory socketFactory = (SocketFactory) SocketFactory.getDefault();
-                                                    // Socket socket = (Socket) socketFactory.createSocket(serverIp,serverPort);
+                                                    SocketFactory socketFactory = (SocketFactory) SocketFactory.getDefault();
+                                                    Socket socket = (Socket) socketFactory.createSocket(serverIp,serverPort);
 
                                                     // PAI 3 -> With SSL
-                                                    SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-                                                    SSLSocket socket = (SSLSocket) socketFactory.createSocket(serverIp, serverPort);
+                                                    // SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+                                                    // SSLSocket socket = (SSLSocket) socketFactory.createSocket(serverIp, serverPort);
 
+                                                    // NONCE FORM 1 -> random
                                                     // SecureRandom secureRandom = SecureRandom.getInstance("SHA1PRNG");
                                                     // Integer intNonce = secureRandom.nextInt();
                                                     // String nonce =  intNonce.toString();
+
+                                                    // NONCE FORM 2 -> alphanumeric
                                                     String nonce = generateNonce(16);
 
                                                     String hmac = generateHmac(key,message,nonce);
