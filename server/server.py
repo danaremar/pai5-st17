@@ -1,6 +1,6 @@
 import socket
 import json
-from hashlib import sha3_256
+from hashlib import sha_256, sha3_256
 import hmac
 import sqlite3
 import conf
@@ -176,7 +176,7 @@ def generate_hmac(key, message, nonce):
     encoded_key = repr(key).encode(ENCODING)
     body = str(message) + nonce
     raw_body = body.encode(ENCODING)
-    hashed = hmac.new(encoded_key, raw_body, sha3_256)
+    hashed = hmac.new(encoded_key, raw_body, sha_256)
     return hashed.hexdigest()
 
 
