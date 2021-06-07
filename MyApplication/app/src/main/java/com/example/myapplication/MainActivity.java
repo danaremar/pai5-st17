@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.res.Resources;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -20,8 +21,15 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.Signature;
+import java.security.SignatureException;
 
 import javax.net.SocketFactory;
 
@@ -30,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     // Setup Server information
     protected static String serverIp = "10.0.2.2";
     protected static int serverPort = 465;
+    private static String signAlgorithm = "SHA256withRSA";
 
     private String okMessage = "Petición enviada correctamente";
     private String errorMessage = "Ha ocurrido un problema";
@@ -106,6 +115,8 @@ public class MainActivity extends AppCompatActivity {
                                         // 2. Firmar los datos
                                         ////////////////////////////////////////////////////////////////////////
 
+                                        final String messageSign = generateMessageSign(message);
+
 
                                         ////////////////////////////////////////////////////////////////////////
                                         // 3. Enviar los datos
@@ -137,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
 
                                                     JSONObject dataJson = new JSONObject();
                                                     dataJson.put("message", messageJson);
+                                                    dataJson.put("messageSign", messageSign);
                                                     dataJson.put("nonce", nonce);
                                                     dataJson.put("hmac", hmac);
 
@@ -176,6 +188,24 @@ public class MainActivity extends AppCompatActivity {
                     .setNegativeButton(android.R.string.no, null)
                     .show();
         }
+    }
+
+    private static String generateMessageSign(String message) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        KeyPair kp = getRSAKeyPair();
+        PrivateKey pk = kp.getPrivate();
+
+        Signature sg = Signature.getInstance(signAlgorithm);
+        sg.initSign(pk);
+        sg.update(message.getBytes());
+        byte[] firma = sg.sign();
+
+        return Base64.encodeToString(firma, Base64.DEFAULT);
+    }
+
+    public static KeyPair getRSAKeyPair() throws NoSuchAlgorithmException {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        return kpg.generateKeyPair();
     }
 
     private Boolean validate(Integer number) {
