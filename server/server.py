@@ -89,8 +89,9 @@ class Server:
                             thread_db = sqlite3.connect(NONCE_DB)
                             requests = select_all_responses(thread_db, moment)
 
-                            messageEnc = SHA256.new(message.encode())
-                            signature = PKCS1_v1_5.new(self.key).sign(messageEnc)
+                            mkey = RSA.importKey(self.key)
+                            messageEnc = SHA256.new(str(message).encode())
+                            signature = PKCS1_v1_5.new(mkey).sign(messageEnc)
                             resultSignature = base64.b64encode(signature).decode()
                             
 
