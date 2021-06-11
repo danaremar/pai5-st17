@@ -1,12 +1,11 @@
-from server.database import insert_wrong_sign
 import socket
 import json
-from hashlib import sha256, sha_256, sha3_256
+from hashlib import sha256
 import hmac
 import sqlite3
 import conf
 from custom_logger import warning, info
-from database import initialize_db, duplicated_nonce, insert_new_nonce, insert_no_attack, insert_reply_attack, insert_integrity_attack, insert_brute_force_attack, select_attacked, select_all_responses, ATTACK_INTEGRITY, ATTACK_REPLY, ATTACK_BRUTE_FORCE
+from database import initialize_db, duplicated_nonce, insert_new_nonce, insert_no_attack, insert_reply_attack, insert_integrity_attack, insert_brute_force_attack, select_attacked, select_all_responses, insert_wrong_sign, ATTACK_INTEGRITY, ATTACK_REPLY, ATTACK_BRUTE_FORCE
 import datetime
 import ssl
 import os
@@ -201,7 +200,7 @@ def generate_hmac(key, message, nonce):
     encoded_key = repr(key).encode(ENCODING)
     body = str(message) + nonce
     raw_body = body.encode(ENCODING)
-    hashed = hmac.new(encoded_key, raw_body, sha_256)
+    hashed = hmac.new(encoded_key, raw_body, sha256)
     return hashed.hexdigest()
 
 
