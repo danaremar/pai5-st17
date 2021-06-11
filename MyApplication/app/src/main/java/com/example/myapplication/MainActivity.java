@@ -16,22 +16,37 @@ import androidx.appcompat.app.AppCompatActivity;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.KeyManagementException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
+import java.util.concurrent.TimeUnit;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.SocketFactory;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -43,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
     private String okMessage = "Petición enviada correctamente";
     private String errorMessage = "Ha ocurrido un problema";
     private String key = "108079546209274483481442683641105470668825844172663843934775892731209928221929";
+    private String caPath = "C:/Users/elsen/Documents/GitHub/pai5-st17/certificates/certificate.jks";
+    String sslPassword = "st17";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -133,6 +150,7 @@ public class MainActivity extends AppCompatActivity {
                                                     Socket socket = (Socket) socketFactory.createSocket(serverIp,serverPort);
 
                                                     // PAI 3 -> With SSL
+                                                    // SSLSocketFactory socketFactory = getSslSocketFactory();
                                                     // SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
                                                     // SSLSocket socket = (SSLSocket) socketFactory.createSocket(serverIp, serverPort);
 
@@ -144,7 +162,9 @@ public class MainActivity extends AppCompatActivity {
                                                     // NONCE FORM 2 -> alphanumeric
                                                     String nonce = generateNonce(16);
 
-                                                    String hmac = generateHmac(key,message,nonce);
+                                                    //String hmac = generateHmac(key,message,nonce);
+                                                    String messageToHmac = message+nonce;
+                                                    String hmac = calcHmacSha256(key.getBytes("UTF-8"),(messageToHmac).getBytes("UTF-8"));
 
                                                     JSONObject dataJson = new JSONObject();
                                                     dataJson.put("message", messageJson);
@@ -168,6 +188,8 @@ public class MainActivity extends AppCompatActivity {
 
                                                     // close connection
                                                     output.close();
+                                                    input.close();
+                                                    socket.close();
 
                                                 // Error -> Show an Error Message
                                                 } catch (Exception e) {
@@ -188,6 +210,32 @@ public class MainActivity extends AppCompatActivity {
                     .setNegativeButton(android.R.string.no, null)
                     .show();
         }
+    }
+
+    private SSLSocketFactory getSslSocketFactory() throws KeyStoreException, NoSuchAlgorithmException, UnrecoverableKeyException, KeyManagementException, IOException, CertificateException {
+        KeyStore ks = KeyStore.getInstance("JKS");
+
+        // get user password and file input stream
+        char[] password = new char[sslPassword.length()];
+        for (int i = 0; i < sslPassword.length(); i++) {
+            password[i] = sslPassword.charAt(i);
+        }
+
+        ClassLoader cl = this.getClass().getClassLoader();
+        InputStream stream = cl.getResourceAsStream(caPath);
+        ks.load(stream, password);
+        stream.close();
+
+        SSLContext sc = SSLContext.getInstance("TLS");
+        KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+
+        kmf.init(ks, password);
+        tmf.init(ks);
+
+        sc.init(kmf.getKeyManagers(), tmf.getTrustManagers(),null);
+
+        return sc.getSocketFactory();
     }
 
     private static String generateMessageSign(String message) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
@@ -217,6 +265,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String generateHmac(String key, String message, String nonce) throws NoSuchAlgorithmException {
+
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         String body = message + nonce;
 
@@ -225,6 +274,21 @@ public class MainActivity extends AppCompatActivity {
                 body.getBytes(StandardCharsets.UTF_8));
 
         return bytesToHex(encodedHash);
+
+    }
+
+    // from: https://sorenpoulsen.com/calculate-hmac-sha256-with-java
+    static public String calcHmacSha256(byte[] secretKey, byte[] message) {
+        byte[] hmacSha256 = null;
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey, "HmacSHA256");
+            mac.init(secretKeySpec);
+            hmacSha256 = mac.doFinal(message);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to calculate hmac-sha256", e);
+        }
+        return bytesToHex(hmacSha256);
     }
 
     // from: https://www.geeksforgeeks.org/generate-random-string-of-given-size-in-java/
