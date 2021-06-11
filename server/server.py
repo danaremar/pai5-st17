@@ -85,8 +85,8 @@ class Server:
 
                             now = datetime.datetime.now()
                             since = datetime.datetime(now.year, now.month, now.day).timestamp()
-                            hour = datetime.timedelta(hours=1)
-                            moment = since - 4*hour
+                            hour = datetime.timedelta(hours=4)
+                            moment = since - hour
                             thread_db = sqlite3.connect(NONCE_DB)
                             requests = select_all_responses(thread_db, moment)
 
@@ -133,7 +133,7 @@ class Server:
         f.write("\n--------------------------------------------------\n")
         f.write("DAY " + now.strftime("%d %m %Y") + "\n")
 
-        since = datetime.datetime(now.year, now.month, now.day).timestamp()
+        since = datetime.datetime(now.year, now.month, now.day)
 
         month = datetime.timedelta(days=30)
         two_months = datetime.timedelta(days=60)
