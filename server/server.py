@@ -83,7 +83,7 @@ class Server:
                             generated_hmac = generate_hmac(self.key, message, nonce)
 
                             now = datetime.datetime.now()
-                            since = datetime.datetime(now.year, now.month, now.day).timestamp()
+                            since = datetime.datetime(now.year, now.month, now.day)
                             hour = datetime.timedelta(hours=4)
                             moment = since - hour
                             thread_db = sqlite3.connect(NONCE_DB)
