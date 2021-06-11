@@ -1,6 +1,7 @@
+from server.database import insert_wrong_sign
 import socket
 import json
-from hashlib import sha_256, sha3_256
+from hashlib import sha256, sha_256, sha3_256
 import hmac
 import sqlite3
 import conf
@@ -9,6 +10,10 @@ from database import initialize_db, duplicated_nonce, insert_new_nonce, insert_n
 import datetime
 import ssl
 import os
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+import base64
 
 HOST = conf.SERVER_IP
 PORT = conf.SERVER_PORT
@@ -74,6 +79,7 @@ class Server:
                             message = loaded_data["message"]
                             nonce = loaded_data["nonce"]
                             hmac = loaded_data["hmac"]
+                            messageSign = loaded_data["messageSign"]
                             more_nonces = duplicated_nonce(self.db, nonce)
                             generated_hmac = generate_hmac(self.key, message, nonce)
 
@@ -83,6 +89,10 @@ class Server:
                             moment = since - 4*hour
                             thread_db = sqlite3.connect(NONCE_DB)
                             requests = select_all_responses(thread_db, moment)
+
+                            messageEnc = SHA256.new(message.encode())
+                            signature = PKCS1_v1_5.new(self.key).sign(messageEnc)
+                            resultSignature = base64.b64encode(signature).decode()
                             
 
                             if more_nonces:
@@ -97,6 +107,10 @@ class Server:
                                 warning(f'SERVER FAILURE: Server is being attacked. Please try later')
                                 insert_brute_force_attack(self.db)
                                 response = {"RESPONSE": "Conection failed: Server is being attacked"}
+                            elif messageSign != resultSignature:
+                                warning(f'SERVER FAILURE: Server could not verify the message sign')
+                                insert_wrong_sign(self.db)
+                                response = {"RESPONSE": "Wrong signature: Client and server sign are not the same"}
                             else:
                                 insert_new_nonce(self.db, nonce)
                                 insert_no_attack(self.db)

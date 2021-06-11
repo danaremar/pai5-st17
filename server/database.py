@@ -4,6 +4,7 @@ import datetime
 ATTACK_REPLY = 'REPLY'
 ATTACK_INTEGRITY = 'INTEGRITY'
 ATTACK_BRUTE_FORCE = 'BRUTE_FORCE'
+ATTACK_WRONG_SIGN = 'WRONG_SIGN'
 
 def initialize_db(db):
     cur = db.cursor()
@@ -33,6 +34,9 @@ def insert_integrity_attack(db):
 
 def insert_brute_force_attack(db):
     insert_attack(db, ATTACK_BRUTE_FORCE)
+
+def insert_wrong_sign(db):
+    insert_attack(db, ATTACK_WRONG_SIGN)
 
 def insert_attack(db, attackType):
     cur = db.cursor()
